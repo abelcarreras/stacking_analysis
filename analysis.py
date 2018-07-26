@@ -1,9 +1,34 @@
+#!/usr/bin/env python
+
 import descriptor
 import iofile
 import numpy as np
+import json
+import argparse
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+parser = argparse.ArgumentParser(description='stacking analysis options')
+
+parser.add_argument('input_file', metavar='input_file', type=str,
+                    help='JSON format input file')
+
+parser.add_argument('molecule_file', metavar='trajectory', type=str,
+                    help='Tinker XYZ or ARC file')
+
+parser.add_argument('--relax', metavar='N', type=int, default=0,
+                    help='relax steps [default: 0]')
+
+parser.add_argument('--max', metavar='N', type=int, default=20000,
+                    help='max steps [default: 20000]')
+
+parser.add_argument('--cutoff', metavar='F', type=float, default=5.0,
+                    help='cutoff pair interaction')
+
+parser.add_argument('--sampling', metavar='N', type=int, default=10,
+                    help='sampling ')
+
+args = parser.parse_args()
 
 
 def get_angle_between_vectors(v1, v2, symmetry=360, reflexion=False):
@@ -117,17 +142,22 @@ def average_angles(angle_list, symmetry=180):
     return average
 
 
-data = iofile.reading_from_arc_file_mmap('QT4C/qt4c_helix.arc', nrelax=10000, nmax=19000)
+#data = iofile.reading_from_arc_file_mmap('QT4C/qt4c_helix.arc', nrelax=100, nmax=190)
+data = iofile.reading_from_arc_file_mmap(args.molecule_file, nrelax=args.relax, nmax=args.max)
 
-monomer_atoms = 184
-center_range = [0, 47]
-align_atoms = [8, 16]
+
+with open(args.input_file) as f:
+    input_data = json.load(f)
+
+monomer_atoms = input_data['monomer_atoms']
+center_range = input_data['center_range']
+align_atoms = input_data['align_atoms']
 
 # create 3D plot
-plt3d = plt.figure().gca(projection='3d')
-plt3d.set_xlim3d(left=-20, right=20)
-plt3d.set_ylim3d(bottom=-15, top=20)
-plt3d.set_zlim3d(bottom=-5, top=20)
+#plt3d = plt.figure().gca(projection='3d')
+#plt3d.set_xlim3d(left=-20, right=20)
+#plt3d.set_ylim3d(bottom=-15, top=20)
+#plt3d.set_zlim3d(bottom=-5, top=20)
 
 rotation_angle = []
 distance = []
@@ -135,7 +165,7 @@ slides = []
 neighbors = []
 total_centers = []
 
-for coordinates in data['trajectory'][::10]:
+for coordinates in data['trajectory'][::args.sampling]:
     total_atoms = len(coordinates)
     total_monomers = total_atoms/monomer_atoms
 
@@ -152,15 +182,15 @@ for coordinates in data['trajectory'][::10]:
         #plt3d.scatter(*coordinates.T, color='orange')
         #plt3d.scatter(*coordinates_center.T, color='blue', s=50)
 
-        plt3d.scatter(*center, color='orange')
-        plt3d.quiver(*center.tolist() + (vector * 15).tolist(), color='red')
+        #plt3d.scatter(*center, color='orange')
+        #plt3d.quiver(*center.tolist() + (vector * 15).tolist(), color='red')
         #plt3d.quiver(*(center).tolist() + (normal * 5).tolist(), color='green')
 
         vectors.append(vector)
         centers.append(center)
         normals.append(normal)
 
-    pairs = get_significative_pairs(centers, normals, radius=5)
+    pairs = get_significative_pairs(centers, normals, radius=args.cutoff)
     neighbors.append(len(pairs))
 
     if len(pairs) == 0:
@@ -185,44 +215,45 @@ for coordinates in data['trajectory'][::10]:
     #slides.append(np.average(slides_i, axis=0))
     total_centers.append(np.array(centers))
 
-plt.show()
+#plt.show()
 
 np.savetxt('rotation.dat', rotation_angle)
 np.savetxt('distance.dat', distance)
 np.savetxt('slides.dat', slides)
 np.savetxt('neighbors.dat', neighbors)
+
 with file('total_centers.dat', 'w') as outfile:
     for slice_2d in np.array(total_centers):
         outfile.write('\n\n')
         np.savetxt(outfile, slice_2d)
 
 # Plot data
-plt.title('Rotation angle')
-plt.ylim([0,90])
-plt.plot(rotation_angle, 'o')
-plt.show()
+#plt.title('Rotation angle')
+#plt.ylim([0,90])
+#plt.plot(rotation_angle, 'o')
+#plt.show()
 
-plt.title('Rotation angle')
-plt.hist(rotation_angle, normed=1, bins=20)
-plt.show()
+#plt.title('Rotation angle')
+#plt.hist(rotation_angle, normed=1, bins=20)
+#plt.show()
 
-plt.title('Distance')
-plt.ylim([0, 10])
-plt.plot(distance, 'o')
-plt.show()
+#plt.title('Distance')
+#plt.ylim([0, 10])
+#plt.plot(distance, 'o')
+#plt.show()
 
-plt.title('Slide')
-plt.plot(slides, 'o')
-plt.show()
+#plt.title('Slide')
+#plt.plot(slides, 'o')
+#plt.show()
 
-plt.title('neighbors')
-plt.plot(neighbors)
-plt.show()
+#plt.title('neighbors')
+#plt.plot(neighbors)
+#plt.show()
 
-plt.title('neighbors')
-plt.hist(neighbors, normed=1)
+#plt.title('neighbors')
+#plt.hist(neighbors, normed=1)
 #plt.xticks(np.arange(-0.5, 8.5, 1.0), [str(k-1) for k in range(20)])
-plt.show()
+#plt.show()
 
 #plt.hist(rotation_angle[500:], normed=1)
 
