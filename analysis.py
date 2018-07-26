@@ -23,10 +23,10 @@ parser.add_argument('--max', metavar='N', type=int, default=20000,
                     help='max steps [default: 20000]')
 
 parser.add_argument('--cutoff', metavar='F', type=float, default=5.0,
-                    help='cutoff pair interaction')
+                    help='cutoff pair interaction in Angstrom [default: 5.0]')
 
 parser.add_argument('--sampling', metavar='N', type=int, default=10,
-                    help='sampling ')
+                    help='trajectory sampling [default: 10]')
 
 args = parser.parse_args()
 
@@ -196,9 +196,9 @@ for coordinates in data['trajectory'][::args.sampling]:
     if len(pairs) == 0:
         continue
 
-    #rotation_angle_i = []
-    #distance_i = []
-    #slides_i = []
+    # rotation_angle_i = []
+    # distance_i = []
+    # slides_i = []
 
     for pair in pairs:
         rotation_angle.append(get_angle_between_vectors(vectors[pair[0]], vectors[pair[1]],
@@ -210,9 +210,9 @@ for coordinates in data['trajectory'][::args.sampling]:
                                                  normals[pair[0]], normals[pair[1]],
                                                  vectors[pair[0]], vectors[pair[1]]))
 
-    #rotation_angle.append(average_angles(rotation_angle_i, symmetry=180))  # in degrees
-    #distance.append(np.average(distance_i))
-    #slides.append(np.average(slides_i, axis=0))
+    # rotation_angle.append(average_angles(rotation_angle_i, symmetry=180))  # in degrees
+    # distance.append(np.average(distance_i))
+    # slides.append(np.average(slides_i, axis=0))
     total_centers.append(np.array(centers))
 
 #plt.show()
