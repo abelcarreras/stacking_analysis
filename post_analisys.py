@@ -16,6 +16,10 @@ def get_correlation_from_value(ref_data, target_data, value=0.0):
 
 
 slides = np.loadtxt('slides.dat')
+rotation_angle = np.loadtxt('rotation.dat')
+distance = np.loadtxt('distance.dat')
+neighbors = np.loadtxt('neighbors.dat')
+
 
 # LONGITUDINAL
 inf, sup = get_correlation_from_value(slides[:, 1], slides[:, 0], value=2)
@@ -45,4 +49,32 @@ plt.hist(inf, histtype=u'step', label='longitudinal < 4')
 plt.hist(sup,histtype=u'step', label='longitudinal > 4')
 plt.legend()
 plt.show()
+
+
+
+# Plot data
+plt.title('Rotation angle')
+plt.ylim([0,90])
+plt.plot(rotation_angle, 'o')
+plt.show()
+
+plt.title('Rotation angle')
+plt.hist(rotation_angle, normed=1, bins=20)
+plt.show()
+
+plt.title('Distance')
+plt.ylim([0, 10])
+plt.plot(distance, 'o')
+plt.show()
+
+plt.title('neighbors')
+plt.plot(neighbors)
+plt.show()
+
+plt.title('neighbors')
+plt.hist(neighbors, normed=1)
+plt.xticks(np.arange(-0.5, 8.5, 1.0), [str(k-1) for k in range(20)])
+plt.show()
+
+#plt.hist(rotation_angle[500:], normed=1)
 
