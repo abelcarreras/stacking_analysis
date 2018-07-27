@@ -150,8 +150,8 @@ def get_significative_pairs(centers, normals, radius=5):
                                                normals[pair[0]], normals[pair[1]])
 
         distance_centers = np.linalg.norm(centers[pair[1]] - centers[pair[0]])
-        #print(pair, distance)
-        if distance_planes < radius and distance_centers < radius:
+        print(distance_centers, distance_planes)
+        if distance_centers < radius*2 and distance_planes < radius:
             list_pairs.append(pair)
     return list_pairs
 
