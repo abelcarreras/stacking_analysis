@@ -1,12 +1,11 @@
 #!/usr/bin/env python
+__test__ = False
 
 import descriptor
 import iofile
 import numpy as np
 import json
 import argparse
-# import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3D
 
 parser = argparse.ArgumentParser(description='stacking analysis options')
 
@@ -31,11 +30,47 @@ parser.add_argument('--sampling', metavar='N', type=int, default=10,
 args = parser.parse_args()
 
 
-def get_angle_between_vectors(v1, v2, symmetry=360, reflexion=False):
+def average_angles(angle_list, symmetry=360):
+    """
+    Proper average of angles
+    :param angle_list: list of angles to be averaged
+    :param symmetry: set the symmetry
+    :return: average
+    """
+
+    average = 0
+    for i, angle in enumerate(angle_list):
+
+        #print('*', angle, average)
+        div = (angle - average + symmetry // 2) // symmetry
+        angle -= div * symmetry
+        #print(angle)
+
+        if i == 0:
+            average += angle
+        else:
+            average = (average + angle/float(i)) / (float(i+1)/i)
+
+        div = average // symmetry
+        average -= div * symmetry
+
+    return average
+
+
+def get_angle_between_vectors(v1, v2, symmetry=360, reflexion=False, n1=None, n2=None):
     """
     calculate angle between to vectors v1 & v2 in degrees
     """
-    angle = np.arccos(np.dot(v1, v2)) * 180 / np.pi
+
+    if n1 is not None and n2 is not None:
+        pj1 = v1 - np.dot(v1, n2)*n2
+        pj2 = v2 - np.dot(v2, n1)*n1
+        angle = average_angles([np.arccos(np.dot(pj1, v2)) * 180 / np.pi,
+                                np.arccos(np.dot(pj2, v1)) * 180 / np.pi],
+                               symmetry=180)
+
+    else:
+        angle = np.arccos(np.dot(v1, v2)) * 180 / np.pi
 
     div = angle // symmetry
     angle -= div * symmetry
@@ -43,9 +78,7 @@ def get_angle_between_vectors(v1, v2, symmetry=360, reflexion=False):
     if reflexion:
         mid_point = symmetry // 2
         if angle > mid_point:
-            angle = mid_point - angle
-        if angle < 0:
-            angle = -angle
+            angle = symmetry - angle
 
     return angle
 
@@ -123,25 +156,6 @@ def get_significative_pairs(centers, normals, radius=5):
     return list_pairs
 
 
-def average_angles(angle_list, symmetry=180):
-
-    average = 0
-    for i, angle in enumerate(angle_list):
-
-        div = (angle + symmetry // 2) // symmetry
-        angle = angle - div * symmetry
-
-        if i == 0:
-            average += angle
-        else:
-            average = (average + angle/float(i)) / (float(i+1)/i)
-
-        div = average // symmetry
-        average -= div * symmetry
-
-    return average
-
-
 #data = iofile.reading_from_arc_file_mmap('QT4C/qt4c_helix.arc', nrelax=100, nmax=190)
 data = iofile.reading_from_arc_file_mmap(args.molecule_file, nrelax=args.relax, nmax=args.max)
 
@@ -154,10 +168,14 @@ center_range = input_data['center_range']
 align_atoms = input_data['align_atoms']
 
 # create 3D plot
-#plt3d = plt.figure().gca(projection='3d')
-#plt3d.set_xlim3d(left=-20, right=20)
-#plt3d.set_ylim3d(bottom=-15, top=20)
-#plt3d.set_zlim3d(bottom=-5, top=20)
+if __test__:
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+
+    plt3d = plt.figure().gca(projection='3d')
+    plt3d.set_xlim3d(left=-20, right=20)
+    plt3d.set_ylim3d(bottom=-15, top=20)
+    plt3d.set_zlim3d(bottom=-5, top=20)
 
 rotation_angle = []
 distance = []
@@ -179,12 +197,13 @@ for coordinates in data['trajectory'][::args.sampling]:
         center, normal, vector = descriptor.get_plane(coordinates_center, direction=align_atoms)
         # print(point, normal, vector)
 
-        #plt3d.scatter(*coordinates.T, color='orange')
-        #plt3d.scatter(*coordinates_center.T, color='blue', s=50)
+        if __test__:
+            #plt3d.scatter(*coordinates.T, color='orange')
+            plt3d.scatter(*coordinates_center.T, color='blue', s=50)
 
-        #plt3d.scatter(*center, color='orange')
-        #plt3d.quiver(*center.tolist() + (vector * 15).tolist(), color='red')
-        #plt3d.quiver(*(center).tolist() + (normal * 5).tolist(), color='green')
+            plt3d.scatter(*center, color='orange')
+            plt3d.quiver(*center.tolist() + (vector * 15).tolist(), color='red')
+            plt3d.quiver(*(center).tolist() + (normal * 5).tolist(), color='green')
 
         vectors.append(vector)
         centers.append(center)
@@ -202,7 +221,8 @@ for coordinates in data['trajectory'][::args.sampling]:
 
     for pair in pairs:
         rotation_angle.append(get_angle_between_vectors(vectors[pair[0]], vectors[pair[1]],
-                                                        symmetry=180, reflexion=True))  # in degrees
+                                                        symmetry=180, reflexion=True,
+                                                        n1=normals[pair[0]], n2=normals[pair[1]]))  # in degrees
 
         distance.append(get_distance_between_planes(centers[pair[0]], centers[pair[1]],
                                                     normals[pair[0]], normals[pair[1]]))
@@ -215,7 +235,8 @@ for coordinates in data['trajectory'][::args.sampling]:
     # slides.append(np.average(slides_i, axis=0))
     total_centers.append(np.array(centers))
 
-#plt.show()
+if __test__:
+    plt.show()
 
 np.savetxt('rotation.dat', rotation_angle)
 np.savetxt('distance.dat', distance)
