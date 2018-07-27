@@ -146,12 +146,12 @@ def get_significative_pairs(centers, normals, radius=5):
 
     list_pairs = []
     for pair in itertools.combinations(range(num_monomers), 2):
-        distance = get_distance_between_planes(centers[pair[0]], centers[pair[1]],
+        distance_planes = get_distance_between_planes(centers[pair[0]], centers[pair[1]],
                                                normals[pair[0]], normals[pair[1]])
 
-        #distance = np.linalg.norm(centers[pair[1]] - centers[pair[0]])
+        distance_centers = np.linalg.norm(centers[pair[1]] - centers[pair[0]])
         #print(pair, distance)
-        if distance < radius:
+        if distance_planes < radius and distance_centers < radius:
             list_pairs.append(pair)
     return list_pairs
 

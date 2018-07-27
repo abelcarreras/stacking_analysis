@@ -1,5 +1,6 @@
 {
   "monomer_atoms" : 184,
   "center_range" : [0, 47],
-  "align_atoms" : [8, 16]
+  "align_atoms" : [8, 16],
+  "cell" : [100, 100, 80]
 }
