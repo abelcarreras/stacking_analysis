@@ -83,10 +83,15 @@ def get_angle_between_vectors(v1, v2, symmetry=360, reflexion=False, n1=None, n2
     return angle
 
 
-def get_distance_between_planes(center0, center1, normal0, normal1):
+def get_distance_between_planes(center0, center1, normal0, normal1, cell=None):
     """
     calculate distance between two planes defined by their centers and normal vectors
     """
+
+    if cell is not None:
+        div = (center0 - center1 + np.array(cell) // 2) // cell
+        center0 -= div * np.array(cell)
+
     return np.average(np.abs([np.dot(normal0, center1 - center0),
                               np.dot(normal1, center0 - center1)]))
 
@@ -138,7 +143,7 @@ def get_sliding_between_planes(center0, center1, normal0, normal1, vector0, vect
     return disp_vectorb
 
 
-def get_significative_pairs(centers, normals, radius=5):
+def get_significative_pairs(centers, normals, radius=5, cell=None):
 
     import itertools
 
@@ -146,11 +151,18 @@ def get_significative_pairs(centers, normals, radius=5):
 
     list_pairs = []
     for pair in itertools.combinations(range(num_monomers), 2):
-        distance_planes = get_distance_between_planes(centers[pair[0]], centers[pair[1]],
-                                               normals[pair[0]], normals[pair[1]])
+        center0 = centers[pair[0]]
+        center1 = centers[pair[1]]
 
-        distance_centers = np.linalg.norm(centers[pair[1]] - centers[pair[0]])
-        print(distance_centers, distance_planes)
+        if cell is not None:
+            div = (center0 - center1 + np.array(cell) // 2) // cell
+            center0 -= div * np.array(cell)
+
+        distance_planes = get_distance_between_planes(center0, center1,
+                                               normals[pair[0]], normals[pair[1]], cell=cell)
+
+        distance_centers = np.linalg.norm(center1 - center0)
+        # print(distance_centers, distance_planes)
         if distance_centers < radius*2 and distance_planes < radius:
             list_pairs.append(pair)
     return list_pairs
@@ -166,6 +178,7 @@ with open(args.input_file) as f:
 monomer_atoms = input_data['monomer_atoms']
 center_range = input_data['center_range']
 align_atoms = input_data['align_atoms']
+cell = input_data['cell']
 
 # create 3D plot
 if __test__:
@@ -209,7 +222,7 @@ for coordinates in data['trajectory'][::args.sampling]:
         centers.append(center)
         normals.append(normal)
 
-    pairs = get_significative_pairs(centers, normals, radius=args.cutoff)
+    pairs = get_significative_pairs(centers, normals, radius=args.cutoff, cell=cell)
     neighbors.append(len(pairs))
 
     if len(pairs) == 0:
@@ -225,7 +238,8 @@ for coordinates in data['trajectory'][::args.sampling]:
                                                         n1=normals[pair[0]], n2=normals[pair[1]]))  # in degrees
 
         distance.append(get_distance_between_planes(centers[pair[0]], centers[pair[1]],
-                                                    normals[pair[0]], normals[pair[1]]))
+                                                    normals[pair[0]], normals[pair[1]],
+                                                    cell=cell))
         slides.append(get_sliding_between_planes(centers[pair[0]], centers[pair[1]],
                                                  normals[pair[0]], normals[pair[1]],
                                                  vectors[pair[0]], vectors[pair[1]]))
