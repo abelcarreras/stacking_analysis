@@ -143,7 +143,7 @@ def get_sliding_between_planes(center0, center1, normal0, normal1, vector0, vect
     return disp_vectorb
 
 
-def get_significative_pairs(centers, normals, radius=5, cell=None):
+def get_significative_pairs(centers, normals, radius_cutoff=10, distance_cutoff=5, cell=None):
 
     import itertools
 
@@ -163,7 +163,7 @@ def get_significative_pairs(centers, normals, radius=5, cell=None):
 
         distance_centers = np.linalg.norm(center1 - center0)
         # print(distance_centers, distance_planes)
-        if distance_centers < radius*2 and distance_planes < radius:
+        if distance_centers < radius_cutoff and distance_planes < distance_cutoff:
             list_pairs.append(pair)
     return list_pairs
 
@@ -222,7 +222,10 @@ for coordinates in data['trajectory'][::args.sampling]:
         centers.append(center)
         normals.append(normal)
 
-    pairs = get_significative_pairs(centers, normals, radius=args.cutoff, cell=cell)
+    pairs = get_significative_pairs(centers, normals,
+                                    distance_cutoff=args.cutoff,
+                                    radius_cutoff=args.cutoff*2,
+                                    cell=cell)
     neighbors.append(len(pairs))
 
     if len(pairs) == 0:
