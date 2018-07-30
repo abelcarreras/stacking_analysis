@@ -21,8 +21,14 @@ parser.add_argument('--relax', metavar='N', type=int, default=0,
 parser.add_argument('--max', metavar='N', type=int, default=20000,
                     help='max steps [default: 20000]')
 
-parser.add_argument('--cutoff', metavar='F', type=float, default=5.0,
-                    help='cutoff pair interaction in Angstrom [default: 5.0]')
+parser.add_argument('--cutoff', metavar='F', type=float, default=10.0,
+                    help='cutoff pair interaction in Angstrom [default: 10.0]')
+
+parser.add_argument('--cutoff_dist', metavar='F', type=float, default=10.0,
+                    help='cutoff interplanar distance in Angstrom [default: 10.0]')
+
+parser.add_argument('--cutoff_slide', metavar='F', type=float, nargs=2, default=[10.0, 10.0],
+                    help='cutoff slide distance in Angstrom [default: [10.0, 10.0] ]')
 
 parser.add_argument('--sampling', metavar='N', type=int, default=10,
                     help='trajectory sampling [default: 10]')
@@ -67,8 +73,7 @@ def get_angle_between_vectors(v1, v2, symmetry=360, reflexion=False, n1=None, n2
         pj2 = v2 - np.dot(v2, n1)*n1
         angle = average_angles([np.arccos(np.dot(pj1, v2)) * 180 / np.pi,
                                 np.arccos(np.dot(pj2, v1)) * 180 / np.pi],
-                               symmetry=180)
-
+                               symmetry=symmetry)
     else:
         angle = np.arccos(np.dot(v1, v2)) * 180 / np.pi
 
@@ -96,10 +101,14 @@ def get_distance_between_planes(center0, center1, normal0, normal1, cell=None):
                               np.dot(normal1, center0 - center1)]))
 
 
-def get_sliding_between_planes(center0, center1, normal0, normal1, vector0, vector1, absolute=True):
+def get_sliding_between_planes(center0, center1, normal0, normal1, vector0, vector1, absolute=True, cell=None):
     """
     calculate sliding between two planes defined by their centers and normal vectors
     """
+
+    if cell is not None:
+        div = (center0 - center1 + np.array(cell) // 2) // cell
+        center0 -= div * np.array(cell)
 
     # displacement of planes in Cartesian coordinates
     disp_vector0 = center0 + normal0 * np.dot(normal0, center1 - center0) - center1
@@ -143,7 +152,9 @@ def get_sliding_between_planes(center0, center1, normal0, normal1, vector0, vect
     return disp_vectorb
 
 
-def get_significative_pairs(centers, normals, radius_cutoff=10, distance_cutoff=5, cell=None):
+def get_significative_pairs(centers, normals, vectors,
+                            radius_cutoff=10, distance_cutoff=10, slides_cutoff=(10, 10),
+                            cell=None):
 
     import itertools
 
@@ -158,13 +169,28 @@ def get_significative_pairs(centers, normals, radius_cutoff=10, distance_cutoff=
             div = (center0 - center1 + np.array(cell) // 2) // cell
             center0 -= div * np.array(cell)
 
-        distance_planes = get_distance_between_planes(center0, center1,
-                                               normals[pair[0]], normals[pair[1]], cell=cell)
-
+        # Check centers distance
         distance_centers = np.linalg.norm(center1 - center0)
-        # print(distance_centers, distance_planes)
-        if distance_centers < radius_cutoff and distance_planes < distance_cutoff:
-            list_pairs.append(pair)
+        if distance_centers > radius_cutoff:
+            continue
+
+        # check inter-planar distance
+        distance_planes = get_distance_between_planes(center0, center1,
+                                                      normals[pair[0]], normals[pair[1]],
+                                                      cell=cell)
+
+        if distance_planes > distance_cutoff:
+            continue
+        # check sliding distance
+        slides = get_sliding_between_planes(center0, center1,
+                                            normals[pair[0]], normals[pair[1]],
+                                            vectors[pair[0]], vectors[pair[1]],
+                                            cell=cell)
+
+        if slides[0] > slides_cutoff[0] and slides[1] > slides_cutoff[1]:
+            continue
+
+        list_pairs.append(pair)
     return list_pairs
 
 
@@ -222,9 +248,10 @@ for coordinates in data['trajectory'][::args.sampling]:
         centers.append(center)
         normals.append(normal)
 
-    pairs = get_significative_pairs(centers, normals,
-                                    distance_cutoff=args.cutoff,
-                                    radius_cutoff=args.cutoff*2,
+    pairs = get_significative_pairs(centers, normals, vectors,
+                                    radius_cutoff=args.cutoff,
+                                    distance_cutoff=args.cutoff_dist,
+                                    slides_cutoff=args.cutoff_slide,
                                     cell=cell)
     neighbors.append(len(pairs))
 
@@ -245,7 +272,8 @@ for coordinates in data['trajectory'][::args.sampling]:
                                                     cell=cell))
         slides.append(get_sliding_between_planes(centers[pair[0]], centers[pair[1]],
                                                  normals[pair[0]], normals[pair[1]],
-                                                 vectors[pair[0]], vectors[pair[1]]))
+                                                 vectors[pair[0]], vectors[pair[1]],
+                                                 cell=cell))
 
     # rotation_angle.append(average_angles(rotation_angle_i, symmetry=180))  # in degrees
     # distance.append(np.average(distance_i))
