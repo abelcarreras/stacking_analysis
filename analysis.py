@@ -176,16 +176,14 @@ def get_significative_pairs(centers, normals, vectors,
 
         # check inter-planar distance
         distance_planes = get_distance_between_planes(center0, center1,
-                                                      normals[pair[0]], normals[pair[1]],
-                                                      cell=cell)
+                                                      normals[pair[0]], normals[pair[1]])
 
         if distance_planes > distance_cutoff:
             continue
         # check sliding distance
         slides = get_sliding_between_planes(center0, center1,
                                             normals[pair[0]], normals[pair[1]],
-                                            vectors[pair[0]], vectors[pair[1]],
-                                            cell=cell)
+                                            vectors[pair[0]], vectors[pair[1]])
 
         if slides[0] > slides_cutoff[0] and slides[1] > slides_cutoff[1]:
             continue
