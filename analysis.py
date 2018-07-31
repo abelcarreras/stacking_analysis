@@ -185,7 +185,7 @@ def get_significative_pairs(centers, normals, vectors,
                                             normals[pair[0]], normals[pair[1]],
                                             vectors[pair[0]], vectors[pair[1]])
 
-        if slides[0] > slides_cutoff[0] and slides[1] > slides_cutoff[1]:
+        if slides[0] > slides_cutoff[0] or slides[1] > slides_cutoff[1]:
             continue
 
         list_pairs.append(pair)
